@@ -98,7 +98,6 @@ function updateFreeSelectButtonUI() {
   }
 }
 function useFreeSelect() {
-  if (!ROGUE_ENABLED) return;
   if (gamePaused) return;
   if (!gameStarted || gameOver || gameCleared || abilityChoiceOpen || isReviving || isCountingDown) return;
   if ((freeSelectCharges || 0) <= 0) return;
@@ -173,14 +172,14 @@ function applyAbilityChoice(kind) {
 }
 
 function applyRelic(kind) {
-  if (!ROGUE_ENABLED || !RELIC_DEFS[kind]) return;
+  if (!RELIC_DEFS[kind]) return;
   currentRelic = kind;
   insuranceAvailable = (kind === "insurance");
   try { recordStat("ability", "relic_" + kind); } catch (e) {}
 }
 
 function applyCard(kind) {
-  if (!ROGUE_ENABLED || !CARD_DEFS[kind]) return;
+  if (!CARD_DEFS[kind]) return;
   if (kind === "warp") {
     warpCount = Math.min(WARP_MAX, warpCount + 2);
     updateWarpButtonUI();
@@ -376,15 +375,14 @@ function checkAbilityChoiceTriggers() {
 
 
 function initAbilityChoiceUI() {
-  if (!ROGUE_ENABLED && !ABILITIES_ENABLED) {
-    ["ability-choice-overlay", "free-select-button", "invuln-button", "warp-button"].forEach((id) => {
-      const element = document.getElementById(id);
-      if (element && element.parentNode) element.parentNode.removeChild(element);
-    });
-    return;
-  }
   try { initFreeSelectButton(); } catch (e) {}
   const overlay = document.getElementById("ability-choice-overlay");
+  if (!ROGUE_ENABLED && !ABILITIES_ENABLED) {
+    if (overlay) { overlay.classList.remove("visible"); overlay.style.display = "none"; }
+    const inv = document.getElementById("invuln-button");
+    if (inv) inv.style.display = "none";
+    return;
+  }
   if (overlay && !overlay.dataset.bound) {
     overlay.dataset.bound = "1";
     overlay.addEventListener("click", (e) => {

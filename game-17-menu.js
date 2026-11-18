@@ -94,20 +94,79 @@ function setupImgButtonFallback(btn) {
   if (!btn) return;
   const img = btn.querySelector("img");
   if (!img) return;
-  const showFallback = () => {
+  img.addEventListener("error", () => {
     btn.classList.add("no-img");
-    const fallback = btn.querySelector(".img-btn-fallback");
-    if (fallback) fallback.style.display = "inline-block";
-  };
-  img.addEventListener("error", showFallback);
+  });
   // すでに壊れている場合
   if (img.complete && img.naturalWidth === 0) {
-    showFallback();
+    btn.classList.add("no-img");
   }
 }
 
 const WORLD_COUNT = 5;
 let currentWorldPage = 1; // 1..5
+
+function showStageStarConditions(modeKey, trigger) {
+  let dialog = document.getElementById("star-condition-dialog");
+  if (!dialog) {
+    dialog = document.createElement("div");
+    dialog.id = "star-condition-dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "star-condition-title");
+    dialog.style.cssText = "position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(5,12,30,.76);";
+    dialog.innerHTML =
+      '<div style="width:min(340px,100%);box-sizing:border-box;padding:18px;border:3px solid #ffe566;border-radius:18px;background:linear-gradient(180deg,#fffdf0,#eaf6ff);box-shadow:0 8px 28px rgba(0,0,0,.5);color:#24344a;font-family:inherit;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
+          '<div id="star-condition-title" style="font-size:18px;font-weight:900;color:#8a5900;">⭐ 星の獲得条件</div>' +
+          '<button type="button" data-star-dialog-close aria-label="閉じる" style="border:0;border-radius:50%;width:32px;height:32px;background:#dce8f2;color:#24344a;font-size:20px;font-weight:900;cursor:pointer;">×</button>' +
+        '</div>' +
+        '<div data-star-stage style="font-weight:900;margin-bottom:4px;"></div>' +
+        '<div data-star-progress style="font-size:13px;font-weight:800;color:#52677d;margin-bottom:12px;"></div>' +
+        '<div data-star-conditions style="display:grid;gap:8px;font-size:14px;font-weight:800;line-height:1.4;"></div>' +
+      '</div>';
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog || event.target.closest("[data-star-dialog-close]")) {
+        dialog.style.display = "none";
+        if (dialog._starTrigger) dialog._starTrigger.focus();
+      }
+    });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        dialog.style.display = "none";
+        if (dialog._starTrigger) dialog._starTrigger.focus();
+      }
+    });
+    document.body.appendChild(dialog);
+  }
+
+  const starsMap = loadStageStars();
+  const earned = Math.max(0, Math.min(3, Number(starsMap[modeKey]) || 0));
+  dialog.querySelector("[data-star-stage]").textContent = STAGE_DISPLAY_NAMES[modeKey] || modeKey;
+  dialog.querySelector("[data-star-progress]").textContent = "獲得済み: " + earned + " / 3";
+  const conditionList = dialog.querySelector("[data-star-conditions]");
+  const conditions = [
+    "ゴールまでたどり着く",
+    "ダメージ0回でクリア（復活・保険なし）",
+    "ダメージ0回でクリアし、コインを5枚以上集める"
+  ];
+  conditionList.textContent = "";
+  conditions.forEach((condition, index) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.82);";
+    const status = document.createElement("span");
+    status.textContent = earned >= index + 1 ? "✅" : "☆";
+    status.setAttribute("aria-hidden", "true");
+    const text = document.createElement("span");
+    text.textContent = "★".repeat(index + 1) + " " + condition;
+    row.append(status, text);
+    conditionList.appendChild(row);
+  });
+  dialog._starTrigger = trigger;
+  dialog.style.display = "flex";
+  const closeButton = dialog.querySelector("[data-star-dialog-close]");
+  if (closeButton) closeButton.focus();
+}
 
 function getClearedStages() {
   try {
@@ -335,9 +394,8 @@ function updateWorldPage(mainNum) {
     if (numEl) numEl.textContent = currentWorldPage + "-" + sub;
     const plateTitle = btn.querySelector(".plate-title");
     if (plateTitle) {
-      const stars = getStageDifficultyStars(modeKey);
-      const starStr = "★".repeat(stars) + "☆".repeat(5 - stars);
-      plateTitle.textContent = (STAGE_DISPLAY_NAMES[modeKey] || (currentWorldPage + "-" + sub)) + " " + starStr;
+      const difficulty = getStageDifficultyStars(modeKey);
+      plateTitle.textContent = "難易度 " + difficulty + " / " + (STAGE_DISPLAY_NAMES[modeKey] || (currentWorldPage + "-" + sub));
     }
     const landmark = btn.querySelector(".spot-landmark");
     loadSpotLandmark(landmark, currentWorldPage, sub);
@@ -350,12 +408,27 @@ function updateWorldPage(mainNum) {
       if (!st) {
         st = document.createElement("span");
         st.className = "spot-stars";
-        st.style.cssText = "position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);font-size:10px;color:#ffd24d;text-shadow:0 1px 2px #000;white-space:nowrap;pointer-events:none;";
+        st.style.cssText = "position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);z-index:9;padding:2px 6px;border:1px solid rgba(255,255,255,.8);border-radius:999px;background:rgba(15,28,48,.88);font-size:12px;color:#ffd24d;text-shadow:0 1px 2px #000;white-space:nowrap;cursor:pointer;pointer-events:auto;touch-action:manipulation;";
+        st.setAttribute("role", "button");
+        st.setAttribute("tabindex", "0");
+        st.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          showStageStarConditions(btn.dataset.mode, st);
+        });
+        st.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            showStageStarConditions(btn.dataset.mode, st);
+          }
+        });
         btn.appendChild(st);
       }
       const starsMap = loadStageStars();
-      const n = Number(starsMap[modeKey]) || 0;
-      st.textContent = n > 0 ? ("★".repeat(n) + "☆".repeat(3 - n)) : "";
+      const n = Math.max(0, Math.min(3, Number(starsMap[modeKey]) || 0));
+      st.textContent = "★".repeat(n) + "☆".repeat(3 - n);
+      st.setAttribute("aria-label", (STAGE_DISPLAY_NAMES[modeKey] || modeKey) + "の星の獲得条件を表示。獲得済み " + n + " / 3");
     } catch (e) {}
     btn.classList.remove("selected");
     btn.setAttribute("aria-disabled", unlocked ? "false" : "true");
@@ -578,14 +651,7 @@ function initSettingsUI() {
 }
 
 function initModeSelectUI() {
-  if (!ROGUE_ENABLED && !ABILITIES_ENABLED) {
-    const abilityStat = document.getElementById("stat-abil");
-    const abilityStatRow = abilityStat && abilityStat.closest(".stat-line");
-    if (abilityStatRow && abilityStatRow.parentNode) {
-      abilityStatRow.parentNode.removeChild(abilityStatRow);
-    }
-  }
-  if (ROGUE_ENABLED || ABILITIES_ENABLED) initWarpButton();
+  initWarpButton();
   initAbilityChoiceUI();
   initSettingsUI();
   initResultMenuUI();

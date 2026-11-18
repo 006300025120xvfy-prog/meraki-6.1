@@ -12,7 +12,7 @@ let invulnActiveFrames = 0; // 無敵の残りフレーム
 let lineExtendLevel = 0;    // 線の長さ強化 (0〜3)
 const LINE_EXTEND_MAX = 3;
 const ABILITIES_ENABLED = false; // 旧能力システムはオフ
-const ROGUE_ENABLED = false; // レリック・カード選択と効果は無効
+const ROGUE_ENABLED = true; // A+B ローグ（レリック＋カード）
 
 // --- レリック（ラン開始時・パッシブ）速乾インクなし ---
 const RELIC_DEFS = {
@@ -61,14 +61,16 @@ const INVULN_DURATION_FRAMES = 180; // 約3秒
 // ===== 線の色（ショップ解放） =====
 const LINE_COLOR_DEFS = [
   { id: "default", name: "くろいんく", color: "#1a1a1a", price: 0 },
-  { id: "sky", name: "そらいろ", color: "#3ba7ff", price: 15 },
-  { id: "mint", name: "ミント", color: "#3ddc97", price: 20 },
-  { id: "sunset", name: "ゆうやけ", color: "#ff8a3d", price: 25 },
-  { id: "pink", name: "いちご", color: "#ff5fa2", price: 30 },
-  { id: "gold", name: "きんいろ", color: "#ffc933", price: 40 },
-  { id: "ice", name: "こおり", color: "#a8f0ff", price: 45 },
-  { id: "fire", name: "ほのお", color: "#ff4d2a", price: 55 },
-  { id: "rainbow", name: "にじいろ", color: "rainbow", price: 80 }
+  { id: "sky", name: "そらいろ", color: "#3ba7ff", price: 50 },
+  { id: "mint", name: "ミント", color: "#3ddc97", price: 50 },
+  { id: "sunset", name: "ゆうやけ", color: "#ff8a3d", price: 50 },
+  { id: "pink", name: "いちご", color: "#ff5fa2", price: 50 },
+  { id: "gold", name: "きんいろ", color: "#ffc933", price: 50 },
+  { id: "ice", name: "こおり", color: "#a8f0ff", price: 50 },
+  { id: "fire", name: "ほのお", color: "#ff4d2a", price: 50 },
+  { id: "violet", name: "むらさき", color: "#9b6dff", price: 50 },
+  { id: "lime", name: "ライム", color: "#b7e84b", price: 50 },
+  { id: "rainbow", name: "にじいろ", color: "rainbow", price: 50 }
 ];
 function loadUnlockedLineColors() {
   try {
