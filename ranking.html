@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ランキング | DRAW LINE RUN</title>
+  <script src="se-common.js"></script>
+  <script src="common.js"></script>
+  <style>
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #111;
+      font-family: 'Helvetica Neue', 'Hiragino Sans', 'Noto Sans JP', Arial, sans-serif;
+    }
+    #game-container {
+      position: absolute;
+      width: 400px;
+      height: 700px;
+      transform-origin: center center;
+      overflow: hidden;
+      background: linear-gradient(180deg, #7ec8ff 0%, #b8e8ff 45%, #e8f6ff 100%);
+    }
+
+    /* moved to shell */
+    /* body shell */
+    .rank-screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 10px 14px 12px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      overflow: hidden;
+    }
+    .rank-screen:not(.has-bg) {
+      background:
+        radial-gradient(circle at 8% 12%, rgba(255,255,255,.55) 0 2px, transparent 3px),
+        radial-gradient(circle at 87% 24%, rgba(255,255,255,.4) 0 3px, transparent 4px),
+        linear-gradient(160deg, #51c4f5 0%, #a9e7ff 42%, #eaf8ff 100%);
+      background-size: 34px 34px, 52px 52px, auto;
+    }
+    .rank-bg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: 0; pointer-events: none; display: none;
+    }
+    .rank-screen.has-bg .rank-bg { display: block; }
+    .rank-screen > *:not(.rank-bg) { position: relative; z-index: 1; }
+
+    .rank-title-wrap {
+      text-align: center;
+      flex-shrink: 0;
+      margin: 0;
+    }
+    .rank-title-wrap img {
+      display: none;
+      width: min(200px, 65%);
+      height: auto;
+      margin: 0 auto;
+      filter: drop-shadow(0 4px 10px rgba(0,60,120,0.2));
+    }
+    .rank-title-wrap.has-img img { display: block; }
+    .rank-title-wrap.has-img .title-fallback { display: none; }
+    .title-fallback {
+      display: inline-block;
+      background: linear-gradient(180deg, #f5d78a, #e8b84a);
+      border: 4px solid #fff;
+      border-radius: 16px;
+      padding: 10px 20px 8px;
+      box-shadow: 0 4px 0 #c99000, 0 6px 14px rgba(0,0,0,0.12);
+    }
+    .title-fallback h1 {
+      margin: 0; font-size: 24px; font-weight: 900; color: #fff;
+      text-shadow: 0 2px 0 rgba(0,80,140,0.25); letter-spacing: 2px;
+    }
+    .title-fallback .sub {
+      margin-top: 2px; font-size: 11px; font-weight: 900; color: #1a6ab0;
+    }
+
+    .rank-board {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: rgba(244,251,255,0.96);
+      border: 3px solid #fff;
+      border-radius: 18px;
+      box-shadow: 0 0 0 2px #5ec8ff, 0 8px 18px rgba(20,90,160,0.2);
+      padding: 8px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .rank-summary {
+      flex-shrink: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .rank-summary-card {
+      min-width: 0;
+      padding: 8px 10px;
+      border: 2px solid rgba(255,255,255,.95);
+      border-radius: 14px;
+      background: linear-gradient(180deg,rgba(255,255,255,.95),rgba(226,246,255,.95));
+      box-shadow: 0 3px 0 rgba(30,120,180,.2);
+      text-align: center;
+    }
+    .rank-summary-label {
+      display: block;
+      color: #5681a0;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+    .rank-summary-value {
+      display: block;
+      overflow: hidden;
+      color: #117eb7;
+      font-size: 18px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rank-board-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 2px 7px;
+      color: #34749a;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .rank-board-heading strong {
+      color: #12547e;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .rank-empty {
+      text-align: center;
+      color: #66829a;
+      font-weight: 800;
+      padding: 28px 12px;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .rank-empty-icon {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 38px;
+      filter: drop-shadow(0 3px 2px rgba(40,100,150,.2));
+    }
+
+    .rank-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(180deg, #fff, #f1f8fc);
+      border: 2px solid #d5e7f1;
+      border-radius: 14px;
+      padding: 9px 10px;
+      margin-bottom: 7px;
+      box-sizing: border-box;
+    }
+    .rank-item.top1 {
+      background: linear-gradient(180deg, #fff9db, #ffe89a);
+      border-color: #f2c33b;
+      box-shadow: 0 3px 0 rgba(201,144,0,.24);
+    }
+    .rank-item.top2 {
+      background: linear-gradient(180deg, #f7fbff, #e2edf4);
+      border-color: #bdcdd8;
+    }
+    .rank-item.top3 {
+      background: linear-gradient(180deg, #fff6ef, #ffe1cc);
+      border-color: #e4ad85;
+    }
+    .rank-medal {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 16px; color: #fff;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, #ffd24d, #e8a800);
+      border: 3px solid #fff;
+      box-shadow: 0 2px 0 #c99000;
+    }
+    .rank-item.top2 .rank-medal {
+      background: linear-gradient(180deg, #e0e8f0, #a8b4c0);
+      box-shadow: 0 2px 0 #708090;
+    }
+    .rank-item.top3 .rank-medal {
+      background: linear-gradient(180deg, #ffb080, #e07040);
+      box-shadow: 0 2px 0 #a05030;
+    }
+    .rank-item.top1 .rank-medal,
+    .rank-item.top2 .rank-medal,
+    .rank-item.top3 .rank-medal {
+      width: 48px;
+      height: 48px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      font-size: 32px;
+    }
+    .rank-meta { flex: 1; min-width: 0; }
+    .rank-label {
+      font-weight: 900; font-size: 14px; color: #1a2a4a;
+    }
+    .rank-date {
+      font-size: 11px; color: #7a8aa0; font-weight: bold; margin-top: 1px;
+    }
+    .rank-score {
+      font-weight: 900;
+      font-size: 20px;
+      color: #1a7fd0;
+      text-shadow: 0 1px 0 #fff;
+      flex-shrink: 0;
+      letter-spacing: 0.5px;
+    }
+
+    .rank-footer {
+      flex-shrink: 0;
+      width: 100%;
+      margin-top: 0;
+      text-align: center;
+    }
+    .rank-back {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 300px;
+      box-sizing: border-box;
+      padding: 12px 20px;
+      border-radius: 999px;
+      border: 3px solid #1a4a8a;
+      background: linear-gradient(180deg, #ffe566 0%, #ffb800 100%);
+      color: #1a2a4a;
+      font-weight: 900;
+      font-size: 17px;
+      text-decoration: none;
+      box-shadow: 0 4px 0 #c99000, 0 6px 12px rgba(0,0,0,0.12);
+    }
+    .rank-back:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #c99000;
+    }
+    .rank-back img {
+      display: none;
+      height: 48px;
+      width: auto;
+      max-width: 270px;
+    }
+    .rank-back.has-img {
+      background: none; border: none; box-shadow: none; padding: 0; min-width: 0;
+    }
+    .rank-back.has-img img { display: block; }
+    .rank-back.has-img .back-fallback { display: none; }
+    .rank-back:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+  <div class="rank-screen" id="rank-screen">
+    <img class="rank-bg" data-asset="rank_select_bg.png" alt="">
+    <div class="rank-title-wrap" id="rank-title-wrap">
+      <img data-asset="rank_title.png" alt="ランキング">
+      <div class="title-fallback">
+        <h1>🏆 ランキング</h1>
+        <div class="sub">スコアアタックの記録</div>
+      </div>
+    </div>
+
+    <div class="rank-summary" aria-label="記録の概要">
+      <div class="rank-summary-card">
+        <span class="rank-summary-label">PERSONAL BEST</span>
+        <strong class="rank-summary-value" id="rank-best">—m</strong>
+      </div>
+      <div class="rank-summary-card">
+        <span class="rank-summary-label">SAVED RECORDS</span>
+        <strong class="rank-summary-value" id="rank-count">0件</strong>
+      </div>
+    </div>
+
+    <div class="rank-board" id="rank-board">
+      <div class="rank-board-heading">
+        <strong>🏆 TOP 10</strong>
+        <span>スコアアタック記録</span>
+      </div>
+      <div id="rank-list"></div>
+    </div>
+
+    <div class="rank-footer">
+      <a class="rank-back" id="rank-back" href="index.html">
+        <img data-asset="rank_btn_back.png" alt="タイトルへ">
+        <span class="back-fallback">← タイトルへ</span>
+      </a>
+    </div>
+  </div>
+  </div>
+
+<script>
+  DrawRunCommon.initScale("game-container");
+</script>
+
+  <script>
+    function onRankAssetLoaded(el) {
+      if (el.classList.contains("rank-bg")) {
+        document.getElementById("rank-screen").classList.add("has-bg");
+      }
+      if (el.getAttribute("data-asset") === "rank_title.png") {
+        document.getElementById("rank-title-wrap").classList.add("has-img");
+      }
+      if (el.parentElement && el.parentElement.id === "rank-back") {
+        el.parentElement.classList.add("has-img");
+      }
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("[data-asset]").forEach(function (el) {
+        DrawRunCommon.bindAsset(el, el.getAttribute("data-asset"), onRankAssetLoaded);
+      });
+    });
+
+    function formatDate(d) {
+      if (!d) return "";
+      try {
+        // already short string
+        if (typeof d === "string" && d.indexOf("/") >= 0) return d;
+        var dt = new Date(d);
+        if (isNaN(dt.getTime())) return String(d);
+        var m = dt.getMonth() + 1;
+        var day = dt.getDate();
+        var h = dt.getHours();
+        var mi = dt.getMinutes();
+        return m + "/" + day + " " + String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0");
+      } catch (e) {
+        return String(d);
+      }
+    }
+
+    function loadRanks() {
+      var el = document.getElementById("rank-list");
+      var bestEl = document.getElementById("rank-best");
+      var countEl = document.getElementById("rank-count");
+      var scores = [];
+      try { scores = JSON.parse(localStorage.getItem("drawRunScores")) || []; } catch (e) {}
+      var normalized = scores.map(function (s) {
+        if (typeof s === "object" && s) return { score: Number(s.score) || 0, date: s.date || "" };
+        return { score: Number(s) || 0, date: "" };
+      }).filter(function (s) { return s.score > 0; });
+      normalized.sort(function (a, b) { return b.score - a.score; });
+      var top = normalized.slice(0, 10);
+      if (bestEl) bestEl.textContent = normalized.length ? Math.floor(normalized[0].score).toLocaleString("ja-JP") + "m" : "—m";
+      if (countEl) countEl.textContent = normalized.length + "件";
+      el.textContent = "";
+      if (!top.length) {
+        var empty = document.createElement("div");
+        empty.className = "rank-empty";
+        empty.innerHTML = '<span class="rank-empty-icon" aria-hidden="true">🏁</span>まだ記録がありません<br><small>スコアアタックに挑戦して、最初の記録を残そう！</small>';
+        el.appendChild(empty);
+        return;
+      }
+      top.forEach(function (s, i) {
+        var cls = i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "";
+        var item = document.createElement("div");
+        item.className = "rank-item " + cls;
+        item.setAttribute("aria-label", (i + 1) + "位、" + Math.floor(s.score).toLocaleString("ja-JP") + "メートル");
+
+        var medal = document.createElement("div");
+        medal.className = "rank-medal";
+        medal.textContent = ["🥇", "🥈", "🥉"][i] || String(i + 1);
+        medal.setAttribute("aria-hidden", "true");
+
+        var meta = document.createElement("div");
+        meta.className = "rank-meta";
+        var label = document.createElement("div");
+        label.className = "rank-label";
+        label.textContent = (i + 1) + "位";
+        meta.appendChild(label);
+
+        var date = document.createElement("div");
+        date.className = "rank-date";
+        date.textContent = s.date ? formatDate(s.date) : "記録日時なし";
+        meta.appendChild(date);
+
+        var score = document.createElement("div");
+        score.className = "rank-score";
+        score.textContent = Math.floor(s.score).toLocaleString("ja-JP") + "m";
+
+        item.append(medal, meta, score);
+        el.appendChild(item);
+      });
+    }
+    loadRanks();
+  </script>
+</body>
+</html>

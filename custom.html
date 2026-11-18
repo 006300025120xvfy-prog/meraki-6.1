@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>スキン | DRAW LINE RUN</title>
+  <script src="se-common.js"></script>
+  <style>
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #111;
+      font-family: 'Helvetica Neue', 'Hiragino Sans', 'Noto Sans JP', Arial, sans-serif;
+    }
+    #game-container {
+      position: absolute;
+      width: 400px;
+      height: 700px;
+      transform-origin: center center;
+      overflow: hidden;
+      background: linear-gradient(180deg, #7ec8ff 0%, #b8e8ff 45%, #e8f6ff 100%);
+    }
+
+    /* shell */
+    /* body */
+    .skin-screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 8px 12px 14px;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .skin-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      pointer-events: none;
+      display: none;
+    }
+    .skin-screen.has-bg .skin-bg { display: block; }
+    .skin-screen > *:not(.skin-bg) { position: relative; z-index: 1; }
+
+    .skin-title-wrap {
+      text-align: center;
+      margin: 0 auto 4px;
+      flex-shrink: 0;
+    }
+    .skin-title-wrap img {
+      display: none;
+      width: min(220px, 70%);
+      height: auto;
+      margin: 0 auto;
+      filter: drop-shadow(0 4px 10px rgba(0,60,120,0.2));
+    }
+    .skin-title-wrap.has-img img { display: block; }
+    .skin-title-wrap.has-img .title-fallback { display: none; }
+    .title-fallback {
+      display: inline-block;
+      background: linear-gradient(180deg, #f5d78a, #e8b84a);
+      border: 4px solid #fff;
+      border-radius: 16px;
+      padding: 10px 22px 8px;
+      box-shadow: 0 4px 0 #c99000, 0 6px 14px rgba(0,0,0,0.12);
+    }
+    .title-fallback h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 2px 0 rgba(0,80,140,0.25);
+      letter-spacing: 2px;
+    }
+    .title-fallback .sub {
+      margin-top: 2px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #1a6ab0;
+    }
+
+    .skin-board {
+      position: relative;
+      background: rgba(255,255,255,0.92);
+      border: 4px solid #fff;
+      border-radius: 22px;
+      box-shadow: 0 0 0 3px #5ec8ff, 0 8px 20px rgba(20,90,160,0.2);
+      padding: 8px 8px 10px;
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto; /* 8体ぜんぶに届くようにスクロール可能にする */
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+    }
+    .skin-board.has-img {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+    }
+    .skin-board-bg {
+      display: none;
+      width: 100%;
+      height: auto;
+    }
+    /* 枠画像は領域いっぱいに引き伸ばす（画像が縦に長くてカードが切れるのを防ぐ） */
+    .skin-board.has-img .skin-board-bg {
+      display: block; position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: fill; pointer-events: none;
+    }
+    .skin-board.has-img #skin-grid,
+    .skin-board.has-img #line-color-page {
+      position: absolute;
+      inset: 8% 6% 8% 6%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #skin-grid {
+      display: none;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      min-width: 0;
+      height: 100%;
+      box-sizing: border-box;
+      align-content: start;
+      grid-auto-rows: min-content;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #skin-grid.active { display: grid; }
+
+    .skin-page-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 8px;
+      flex-shrink: 0;
+      min-width: 0;
+    }
+    .skin-page-tab {
+      min-height: 42px;
+      min-width: 0;
+      padding: 7px 8px;
+      border: 3px solid #fff;
+      border-radius: 14px;
+      background: linear-gradient(180deg,#e9f7ff,#c4e7ff);
+      box-shadow: 0 3px 0 #73b9e8;
+      color: #28618b;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .skin-page-tab.active {
+      background: linear-gradient(180deg,#ffe98a,#ffc52e);
+      box-shadow: 0 3px 0 #d99500;
+      color: #704700;
+    }
+    #line-color-page {
+      display: none;
+      min-width: 0;
+      height: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 3px;
+      -webkit-overflow-scrolling: touch;
+    }
+    #line-color-page.active { display: block; }
+    .line-color-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 4px;
+      color: #174e78;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .line-color-balance {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #fff3c9;
+      color: #8a5d00;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .line-color-message {
+      min-height: 18px;
+      margin: 0 0 7px;
+      color: #52748a;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    #line-color-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .line-color-option {
+      min-width: 0;
+      min-height: 78px;
+      padding: 7px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: 2px solid #fff;
+      border-radius: 12px;
+      background: linear-gradient(180deg,#fff,#edf7fc);
+      color: #34566d;
+      font: inherit;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(30,80,140,.13);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .line-color-option.selected {
+      border-color: #ffb800;
+      box-shadow: 0 0 0 2px rgba(255,184,0,.3),0 2px 5px rgba(30,80,140,.13);
+    }
+    .line-color-swatch {
+      width: 25px;
+      height: 25px;
+      border: 2px solid rgba(20,50,70,.2);
+      border-radius: 50%;
+      box-shadow: inset 0 1px 2px rgba(255,255,255,.4);
+    }
+    .line-color-name {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 10px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .line-color-status {
+      color: #71899a;
+      font-size: 9px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .skin-card {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.95);
+      padding: 4px 4px 6px;
+      text-align: center;
+      cursor: pointer;
+      box-sizing: border-box;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      transition: transform 0.12s, box-shadow 0.12s;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 3px 8px rgba(30,80,140,0.12);
+    }
+    .skin-card:active { transform: scale(0.97); }
+    .skin-card img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+      margin-bottom: 2px;
+    }
+    .skin-name {
+      display: inline-block;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.12);
+    }
+    .skin-unlock {
+      font-size: 9px;
+      font-weight: bold;
+      color: #7a8aa0;
+      margin-top: -2px;
+      line-height: 1.2;
+    }
+
+    /* キャラごとの色 */
+    .skin-card.c0 { background: linear-gradient(180deg, #e8f4ff, #d0e8ff); }
+    .skin-card.c0 .skin-name { background: linear-gradient(180deg, #4db8ff, #2a8fd8); }
+    .skin-card.c1 { background: linear-gradient(180deg, #ffe8f4, #ffd0e8); }
+    .skin-card.c1 .skin-name { background: linear-gradient(180deg, #ff7eb3, #e84d8a); }
+    .skin-card.c2 { background: linear-gradient(180deg, #e8f6ff, #d4eeff); }
+    .skin-card.c2 .skin-name { background: linear-gradient(180deg, #5ec8ff, #2aa0e0); }
+    .skin-card.c3 { background: linear-gradient(180deg, #e8ffe8, #d4f5d4); }
+    .skin-card.c3 .skin-name { background: linear-gradient(180deg, #4dd47a, #2aa850); }
+    .skin-card.c4 { background: linear-gradient(180deg, #f0e8ff, #e0d4ff); }
+    .skin-card.c4 .skin-name { background: linear-gradient(180deg, #9b6dff, #7a4ae0); }
+    .skin-card.c5 { background: linear-gradient(180deg, #fff6e0, #ffe8b8); }
+    .skin-card.c5 .skin-name { background: linear-gradient(180deg, #ffb84d, #e09020); }
+    .skin-card.c6 { background: linear-gradient(180deg, #fff0e0, #ffe0c8); }
+    .skin-card.c6 .skin-name { background: linear-gradient(180deg, #ff9a4d, #e07020); }
+    .skin-card.c7 { background: linear-gradient(180deg, #f0f4f8, #e4eaf0); }
+    .skin-card.c7 .skin-name { background: linear-gradient(180deg, #9aa8b8, #7a8898); }
+
+    .skin-card.selected {
+      box-shadow: 0 0 0 3px #ffe566, 0 0 0 6px rgba(255,184,0,0.45), 0 4px 12px rgba(0,0,0,0.12);
+      transform: scale(1.02);
+    }
+    .skin-card.locked {
+      cursor: default;
+      filter: grayscale(0.85);
+      opacity: 0.85;
+    }
+    .skin-card.locked img {
+      filter: grayscale(1) contrast(0.9);
+      opacity: 0.55;
+    }
+    .skin-card.locked.selected {
+      box-shadow: 0 3px 8px rgba(30,80,140,0.12);
+      transform: none;
+    }
+
+    .skin-footer {
+      margin-top: 8px;
+      text-align: center;
+      flex-shrink: 0;
+      padding-bottom: 4px;
+    }
+    .skin-confirm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 240px;
+      padding: 14px 36px;
+      border-radius: 999px;
+      border: 5px solid #1a4a8a;
+      background: linear-gradient(180deg, #5ec8ff 0%, #1a9aef 55%, #0d7fd0 100%);
+      color: #fff;
+      font-weight: 900;
+      font-size: 24px;
+      text-decoration: none;
+      box-shadow: 0 4px 0 #0a5a9a, 0 6px 14px rgba(0,80,160,0.25);
+      text-shadow: 0 1px 2px rgba(0,40,80,0.3);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .skin-confirm:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #0a5a9a, 0 3px 8px rgba(0,80,160,0.2);
+    }
+    .skin-confirm img {
+      display: none;
+      height: 84px;
+      width: auto;
+      max-width: 340px;
+    }
+    .skin-confirm.has-img {
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      min-width: 0;
+    }
+    .skin-confirm.has-img img { display: block; }
+    .skin-confirm.has-img .confirm-fallback { display: none; }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+  <div class="skin-screen" id="skin-screen">
+    <img class="skin-bg" data-asset="skin_select_bg.png" alt="">
+    <div class="skin-title-wrap" id="skin-title-wrap">
+      <img data-asset="skin_title.png" alt="スキン">
+      <div class="title-fallback">
+        <h1>✏️ スキン</h1>
+        <div class="sub">スキンを選んで冒険しよう</div>
+      </div>
+    </div>
+
+    <nav class="skin-page-tabs" role="tablist" aria-label="スキンメニュー">
+      <button class="skin-page-tab active" id="skin-tab" type="button" role="tab" aria-selected="true" aria-controls="skin-grid">1 スキン選択</button>
+      <button class="skin-page-tab" id="color-tab" type="button" role="tab" aria-selected="false" aria-controls="line-color-page">2 線の色</button>
+    </nav>
+
+    <div class="skin-board" id="skin-board">
+      <img class="skin-board-bg" data-asset="skin_board.png" alt="">
+      <div id="skin-grid" class="active" role="tabpanel" aria-labelledby="skin-tab"></div>
+      <div id="line-color-page" role="tabpanel" aria-labelledby="color-tab" aria-hidden="true">
+        <div class="line-color-heading">
+          <span>🖌 線の色ショップ</span>
+          <span class="line-color-balance">🪙 <span id="line-color-coins">0枚</span></span>
+        </div>
+        <div class="line-color-message" id="line-color-message">色を購入して、ゲームで使おう！</div>
+        <div id="line-color-options"></div>
+      </div>
+    </div>
+
+    <div class="skin-footer">
+      <a class="skin-confirm" id="skin-confirm" href="index.html">
+        <img data-asset="skin_btn_confirm.png" alt="決定して戻る">
+        <span class="confirm-fallback">決定して戻る</span>
+      </a>
+    </div>
+  </div>
+  </div>
+
+<script>
+  function adjustScale() {
+    const container = document.getElementById("game-container");
+    if (!container) return;
+    const designWidth = 400;
+    const designHeight = 700;
+    const scaleX = window.innerWidth / designWidth;
+    const scaleY = window.innerHeight / designHeight;
+    let scale = Math.min(scaleX, scaleY);
+    if (scale >= 1) scale = 1;
+    container.style.left = "50%";
+    container.style.top = "50%";
+    container.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
+  }
+  window.addEventListener("load", adjustScale);
+  window.addEventListener("resize", adjustScale);
+</script>
+
+  <script>
+    window.__assetDirs = ["", "skin/", "UI/", "ui/", "map/", "assets/", "img/"];
+    window.bindFlexibleAsset = window.bindFlexibleAsset || function (el, name) {
+      if (!el || !name) return;
+      var base = String(name).split("/").pop();
+      var list = [], seen = {};
+      function add(p) { if (p && !seen[p]) { seen[p] = 1; list.push(p); } }
+      add(name); add(base);
+      (window.__assetDirs || [""]).forEach(function (d) { add(d + base); });
+      var i = 0;
+      function tryNext() {
+        if (i >= list.length) return;
+        var url = list[i++];
+        el.onerror = function () { tryNext(); };
+        el.onload = function () {
+          if (!el.naturalWidth) return;
+          if (el.classList.contains("skin-bg")) {
+            document.getElementById("skin-screen").classList.add("has-bg");
+          }
+          if (el.getAttribute("data-asset") === "skin_title.png") {
+            document.getElementById("skin-title-wrap").classList.add("has-img");
+          }
+          if (el.classList.contains("skin-board-bg")) {
+            document.getElementById("skin-board").classList.add("has-img");
+          }
+          if (el.parentElement && el.parentElement.id === "skin-confirm") {
+            el.parentElement.classList.add("has-img");
+          }
+        };
+        el.src = url;
+      }
+      tryNext();
+    };
+
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("[data-asset]").forEach(function (el) {
+        window.bindFlexibleAsset(el, el.getAttribute("data-asset"));
+      });
+    });
+
+    const characterList = [
+      { src: "player.png", name: "クロカゲ", unlock: null },
+      { src: "player2.png", name: "ハムゾウ", unlock: null },
+      { src: "player3.png", name: "マフィン", unlock: null },
+      { src: "player4.png", name: "ロビン・ドングリ", unlock: null },
+      { src: "player5.png", name: "サー・ロデリック", unlock: null },
+      { src: "player6.png", name: "ダスティ・アイアンヒゲ", unlock: null },
+      { src: "player7.png", name: "キャプテン・バーナビー", unlock: "score200", unlockText: "スコアアタック 200m" },
+      { src: "player8.png", name: "ネオン・サイファー", unlock: "stage4all", unlockText: "STAGE1〜4 全クリア" }
+    ];
+    const lineColorOptions = [
+      { id: "default", name: "くろいんく", color: "#1a1a1a", price: 0 },
+      { id: "sky", name: "そらいろ", color: "#3ba7ff", price: 50 },
+      { id: "mint", name: "ミント", color: "#3ddc97", price: 50 },
+      { id: "sunset", name: "ゆうやけ", color: "#ff8a3d", price: 50 },
+      { id: "pink", name: "いちご", color: "#ff5fa2", price: 50 },
+      { id: "gold", name: "きんいろ", color: "#ffc933", price: 50 },
+      { id: "ice", name: "こおり", color: "#a8f0ff", price: 50 },
+      { id: "fire", name: "ほのお", color: "#ff4d2a", price: 50 },
+      { id: "violet", name: "むらさき", color: "#9b6dff", price: 50 },
+      { id: "lime", name: "ライム", color: "#b7e84b", price: 50 },
+      { id: "rainbow", name: "にじいろ", color: "rainbow", price: 50 }
+    ];
+    let lineColorNotice = "色を購入して、ゲームで使おう！";
+
+    function getCoinBalance() {
+      try {
+        return Math.max(0, Math.floor(Number(localStorage.getItem("drawRunCoins")) || 0));
+      } catch (e) {
+        return 0;
+      }
+    }
+    function getUnlockedLineColors() {
+      try {
+        const unlocked = JSON.parse(localStorage.getItem("drawRunLineColors") || "[]");
+        return Array.isArray(unlocked) ? unlocked : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function getCurrentLineColor() {
+      try {
+        const id = localStorage.getItem("drawRunLineColor") || "default";
+        return id === "default" || getUnlockedLineColors().includes(id) ? id : "default";
+      } catch (e) {
+        return "default";
+      }
+    }
+    function selectLineColor(option) {
+      const unlocked = getUnlockedLineColors();
+      if (option.id === "default" || unlocked.includes(option.id)) {
+        try {
+          localStorage.setItem("drawRunLineColor", option.id);
+          lineColorNotice = option.name + "を選択しました";
+        } catch (e) {
+          lineColorNotice = "選択を保存できませんでした";
+        }
+        renderLineColorShop();
+        return;
+      }
+
+      const coins = getCoinBalance();
+      if (coins < option.price) {
+        lineColorNotice = "コインが足りません（あと" + (option.price - coins) + "枚）";
+        renderLineColorShop();
+        return;
+      }
+
+      let oldCoins;
+      let oldUnlocked;
+      let oldSelection;
+      try {
+        oldCoins = localStorage.getItem("drawRunCoins");
+        oldUnlocked = localStorage.getItem("drawRunLineColors");
+        oldSelection = localStorage.getItem("drawRunLineColor");
+        localStorage.setItem("drawRunCoins", String(coins - option.price));
+        localStorage.setItem("drawRunLineColors", JSON.stringify(unlocked.concat(option.id)));
+        localStorage.setItem("drawRunLineColor", option.id);
+        lineColorNotice = option.name + "を購入して選択しました！";
+      } catch (e) {
+        try {
+          if (oldCoins === null || oldCoins === undefined) localStorage.removeItem("drawRunCoins");
+          else localStorage.setItem("drawRunCoins", oldCoins);
+          if (oldUnlocked === null || oldUnlocked === undefined) localStorage.removeItem("drawRunLineColors");
+          else localStorage.setItem("drawRunLineColors", oldUnlocked);
+          if (oldSelection === null || oldSelection === undefined) localStorage.removeItem("drawRunLineColor");
+          else localStorage.setItem("drawRunLineColor", oldSelection);
+        } catch (restoreError) {}
+        lineColorNotice = "購入を保存できませんでした。もう一度お試しください";
+      }
+      renderLineColorShop();
+    }
+    function renderLineColorShop() {
+      const balance = document.getElementById("line-color-coins");
+      const message = document.getElementById("line-color-message");
+      const grid = document.getElementById("line-color-options");
+      if (!balance || !message || !grid) return;
+      const unlocked = getUnlockedLineColors();
+      const selected = getCurrentLineColor();
+      balance.textContent = getCoinBalance().toLocaleString("ja-JP") + "枚";
+      message.textContent = lineColorNotice;
+      grid.innerHTML = lineColorOptions.map((option) => {
+        const owned = option.id === "default" || unlocked.includes(option.id);
+        const isSelected = option.id === selected;
+        const swatch = option.color === "rainbow"
+          ? "linear-gradient(135deg,#ff4b4b,#ffd93d,#35d07f,#35a9ff,#9c5cff)"
+          : option.color;
+        const status = isSelected ? "使用中" : owned ? "所持" : "🪙 " + option.price;
+        return '<button type="button" class="line-color-option' + (isSelected ? " selected" : "") + '" data-line-color="' + option.id + '" aria-pressed="' + isSelected + '">' +
+          '<span class="line-color-swatch" style="background:' + swatch + ';"></span>' +
+          '<span class="line-color-name">' + option.name + '</span>' +
+          '<span class="line-color-status">' + status + '</span>' +
+        '</button>';
+      }).join("");
+      grid.querySelectorAll("[data-line-color]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const option = lineColorOptions.find((entry) => entry.id === button.getAttribute("data-line-color"));
+          if (option) selectLineColor(option);
+        });
+      });
+    }
+
+    const skinTab = document.getElementById("skin-tab");
+    const colorTab = document.getElementById("color-tab");
+    skinTab.addEventListener("click", () => setActivePage("skin"));
+    colorTab.addEventListener("click", () => setActivePage("color"));
+    function setActivePage(page) {
+      const showSkin = page === "skin";
+      document.getElementById("skin-grid").classList.toggle("active", showSkin);
+      document.getElementById("line-color-page").classList.toggle("active", !showSkin);
+      document.getElementById("line-color-page").setAttribute("aria-hidden", String(showSkin));
+      skinTab.classList.toggle("active", showSkin);
+      colorTab.classList.toggle("active", !showSkin);
+      skinTab.setAttribute("aria-selected", String(showSkin));
+      colorTab.setAttribute("aria-selected", String(!showSkin));
+      if (!showSkin) renderLineColorShop();
+      if (window.DrawRunSE) window.DrawRunSE.playButton();
+    }
+
+    function getBestScoreAttack() {
+      let best = 0;
+      try {
+        const scores = JSON.parse(localStorage.getItem("drawRunScores")) || [];
+        scores.forEach((s) => {
+          const v = typeof s === "object" && s ? Number(s.score) : Number(s);
+          if (Number.isFinite(v) && v > best) best = v;
+        });
+      } catch (e) {}
+      return best;
+    }
+    function isStageRangeFullyCleared(maxMain) {
+      let cleared = {};
+      try { cleared = JSON.parse(localStorage.getItem("drawRunStageClears")) || {}; } catch (e) {}
+      for (let m = 1; m <= maxMain; m++) {
+        for (let s = 1; s <= 3; s++) {
+          if (!cleared["stage" + m + "-" + s]) return false;
+        }
+      }
+      return true;
+    }
+    function isUnlocked(i) {
+      const c = characterList[i];
+      if (!c || !c.unlock) return true;
+      if (c.unlock === "score200") return getBestScoreAttack() >= 200;
+      if (c.unlock === "stage4all") return isStageRangeFullyCleared(4);
+      return true;
+    }
+
+    let current = 0;
+    try { current = parseInt(localStorage.getItem("drawRunSkinIndex"), 10) || 0; } catch (e) {}
+    if (current < 0 || current >= characterList.length) current = 0;
+    if (!isUnlocked(current)) current = 0;
+
+    function render() {
+      const grid = document.getElementById("skin-grid");
+      grid.innerHTML = characterList.map((c, i) => {
+        const unlocked = isUnlocked(i);
+        const selected = i === current;
+        return '<div class="skin-card c' + i + (selected ? ' selected' : '') + (unlocked ? '' : ' locked') + '" data-i="' + i + '">' +
+          '<img data-asset="' + c.src + '" src="" alt="">' +
+          '<div class="skin-name">' + (unlocked ? c.name : "???") + '</div>' +
+          (!unlocked ? '<div class="skin-unlock">' + (c.unlockText || "未解放") + '</div>' : '') +
+          '</div>';
+      }).join("");
+      grid.querySelectorAll("img[data-asset]").forEach((img) => {
+        window.bindFlexibleAsset(img, img.getAttribute("data-asset"));
+      });
+      grid.querySelectorAll(".skin-card").forEach((card) => {
+        card.addEventListener("click", () => {
+          const i = Number(card.dataset.i);
+          if (!isUnlocked(i)) return;
+          current = i;
+          try { localStorage.setItem("drawRunSkinIndex", String(i)); } catch (e) {}
+          if (window.DrawRunSE) window.DrawRunSE.playButton();
+          render();
+        });
+      });
+      renderLineColorShop();
+    }
+    render();
+  </script>
+</body>
+</html>
